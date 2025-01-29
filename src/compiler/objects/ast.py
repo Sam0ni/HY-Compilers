@@ -1,9 +1,16 @@
 from dataclasses import dataclass
 
+from objects.source_location import Source_location
+
 
 @dataclass
 class Expression:
     """Base class for AST nodes representing expressions."""
+    loc: Source_location | None
+
+    def __eq__(self, other):
+        if self.loc == other.loc:
+            return True
 
 @dataclass
 class Literal(Expression):
@@ -67,4 +74,13 @@ class Block(Expression):
 
     def __eq__(self, other):
         if self.sequence == other.sequence and self.result == other.result:
+            return True
+        
+@dataclass
+class Declaration(Expression):
+    variable: Identifier
+    value: Expression
+
+    def __eq__(self, other):
+        if self.variable == other.variable and self.value == other.value:
             return True
