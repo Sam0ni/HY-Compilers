@@ -71,6 +71,10 @@ class Parser:
                 factor = ast.Unary(location, operators, factor)
             return factor
         
+        def parse_boolean_literal() -> ast.Boolean_literal:
+            token = consume()
+            return ast.Boolean_literal(token.loc, token.text)
+        
         def parse_factor(allowed: list[str] = [], allow_all: bool = False) -> ast.Expression:
             if peek().text == "(":
                 return parse_parenthesized(allowed, allow_all)
@@ -80,21 +84,62 @@ class Parser:
                 return parse_if_clause(allowed, allow_all)
             elif peek().text == "var":
                 raise Exception(f"{peek().loc}: variable declaration only allowed in blocks or top-level")
+            elif peek().text == "true" | "false":
+                return parse_boolean_literal()
+            elif peek().text == "while":
+                return parse_while_loop()
             elif peek().type == "int_literal":
                 return parse_int_literal()
             elif peek().type == "identifier":
                 return parse_identifier()
             else: raise Exception(f"{peek().loc}: expected an integer literal or and identifier")
 
+        def parse_all():
+            expressions = []
+            expressions.append(parse_expression_top([";"]))
+            while peek().text == ";":
+                expressions.append(parse_expression_top([";"]))
+            return expressions
+
         def parse_expression_top(allowed: list[str] = [], allow_all: bool = False) -> ast.Expression:
             if peek().text == "var":
                 location = peek().loc
                 consume("var")
-                declaration = parse_expression(allowed, allow_all)
-                return ast.Declaration(location, declaration.left, declaration.right)
+                declaration = parse_expression([":"] + allowed, allow_all)
+                if peek().text == ":":
+                    typed = parse_type_expression()
+                    consume("=")
+                    dec_val = parse_expression(allowed, allow_all)
+                    return ast.Declaration(location, declaration, dec_val, typed)
+                return ast.Declaration(location, declaration.left, declaration.right, None)
             else:
                 return parse_expression(allowed, allow_all)
 
+        def parse_type_expression() -> ast.Expression:
+            if peek().text == "(":
+                location = peek().loc
+                consume("(")
+                parameters = []
+                param = parse_type_expression()
+                parameters.append(param)
+                while peek().text == ",":
+                    param = parse_type_expression()
+                    parameters.append(param)
+                consume(")")
+                consume("=>")
+                result = parse_type_expression()
+                return ast.FunctionTypeExpression(loc=location, variable_types=parameters, result_type=result)
+            else:
+                type_expression = parse_identifier()
+                return type_expression
+            
+        def parse_while_loop() -> ast.While_loop:
+            location = peek().loc
+            consume("while")
+            cond = parse_expression(["do"])
+            consume("do")
+            itering = parse_expression()
+            return ast.While_loop(location, cond, itering)
 
 
         def parse_expression(allowed: list[str] = [], allow_all: bool = False) -> ast.BinaryOp:

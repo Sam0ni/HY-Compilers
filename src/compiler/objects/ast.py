@@ -27,6 +27,10 @@ class Identifier(Expression):
     def __eq__(self, other):
         if self.name == other.name:
             return True
+        
+@dataclass
+class Boolean_literal(Expression):
+    boolean: Literal["true", "false"]
 
 @dataclass
 class BinaryOp(Expression):
@@ -77,10 +81,25 @@ class Block(Expression):
             return True
         
 @dataclass
+class FunctionTypeExpression(Expression):
+    variable_types: list[Expression]
+    result_type: Expression
+
+    def __eq__(self, other):
+        if self.variable_types == other.variable_types and self.result_type == other.result_type:
+            return True
+        
+@dataclass
 class Declaration(Expression):
     variable: Identifier
     value: Expression
+    typed: FunctionTypeExpression | Expression | None
 
     def __eq__(self, other):
         if self.variable == other.variable and self.value == other.value:
             return True
+    
+@dataclass
+class While_loop(Expression):
+    condition: Expression
+    itering: Expression
