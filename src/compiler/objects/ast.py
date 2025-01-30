@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Literal as Lit
 
 from objects.source_location import Source_location
 
@@ -30,7 +31,11 @@ class Identifier(Expression):
         
 @dataclass
 class Boolean_literal(Expression):
-    boolean: Literal["true", "false"]
+    boolean: Lit["true", "false"]
+
+    def __eq__(self, other):
+        if self.boolean == other.boolean:
+            return True
 
 @dataclass
 class BinaryOp(Expression):
@@ -103,3 +108,7 @@ class Declaration(Expression):
 class While_loop(Expression):
     condition: Expression
     itering: Expression
+
+    def __eq__(self, other):
+        if self.condition == other.condition and self.itering == other.itering:
+            return True

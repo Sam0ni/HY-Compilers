@@ -84,7 +84,7 @@ class Parser:
                 return parse_if_clause(allowed, allow_all)
             elif peek().text == "var":
                 raise Exception(f"{peek().loc}: variable declaration only allowed in blocks or top-level")
-            elif peek().text == "true" | "false":
+            elif peek().text in ["true", "false"]:
                 return parse_boolean_literal()
             elif peek().text == "while":
                 return parse_while_loop()
@@ -92,12 +92,17 @@ class Parser:
                 return parse_int_literal()
             elif peek().type == "identifier":
                 return parse_identifier()
-            else: raise Exception(f"{peek().loc}: expected an integer literal or and identifier")
+            else: 
+                print(peek())
+                raise Exception(f"{peek().loc}: expected an integer literal or and identifier")
 
         def parse_all():
             expressions = []
             expressions.append(parse_expression_top([";"]))
             while peek().text == ";":
+                consume(";")
+                if peek().type == "end":
+                    break
                 expressions.append(parse_expression_top([";"]))
             return expressions
 
@@ -107,7 +112,9 @@ class Parser:
                 consume("var")
                 declaration = parse_expression([":"] + allowed, allow_all)
                 if peek().text == ":":
+                    consume(":")
                     typed = parse_type_expression()
+                    print(typed)
                     consume("=")
                     dec_val = parse_expression(allowed, allow_all)
                     return ast.Declaration(location, declaration, dec_val, typed)
@@ -267,9 +274,9 @@ class Parser:
                 result = ast.Literal(None, None)
             return ast.Block(location, sequence, result)
         
-        return parse_expression_top()
+        return parse_all()
     
 if __name__ == "__main__":
     P = Parser()
-    binary_operation = [Token(loc=L, type="int_literal", text="2"), Token(loc=L, type="operator", text="+"), Token(loc=L, type="int_literal", text="5")]
-    print(P.parse(binary_operation))
+    code = [Token(L, "identifier", "var"), Token(L, "identifier", "a"), Token(L, "operator", "="), Token(L, "int_literal", "1"), Token(L, "punctuation", ";"), Token(L, "identifier", "print"), Token(L, "punctuation", "("), Token(L, "identifier", "a"), Token(L, "operator", "+"), Token(L, "int_literal", "2"), Token(L, "operator", "=="), Token(L, "int_literal", "3"), Token(L, "punctuation", ")")]
+    print(P.parse(code))
