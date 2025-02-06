@@ -1,5 +1,5 @@
 import objects.ast as ast
-from objects.types import Int, Bool, Type
+from objects.types import Int, Bool, Type, FunType
 from objects.sym_table import SymTab
 
 def typecheck(node: ast.Expression, symbols: SymTab = SymTab({}, None)) -> Type:
@@ -8,10 +8,22 @@ def typecheck(node: ast.Expression, symbols: SymTab = SymTab({}, None)) -> Type:
         case ast.BinaryOp():
             t1 = typecheck(node.left)
             t2 = typecheck(node.right)
-            if node.op == "+":
+            if node.op in ["+", "-", "*", "/", "%"]:
                 if t1 is not Int or t2 is not Int:
                     raise Exception(f"In {node} the operators were not of same type")
                 return Int
+            elif node.op in ["<", ">", ">=", "<="]:
+                if t1 is not Int or t2 is not Int:
+                    raise Exception(f"In {node} the operators were not of same type")
+                return Bool
+            elif node.op == "=":
+                if t1 != t2:
+                    raise Exception(f"Variable {t1} is not of the same type as {t2}")
+                return t2
+            elif node.op in ["==", "!="]:
+                if t1 != t2:
+                    raise Exception(f"{t1} and {t2} are not of the same type")
+                return t1
         
         case ast.IfExpression():
             t1 = typecheck(node.cond)
@@ -46,7 +58,23 @@ def typecheck(node: ast.Expression, symbols: SymTab = SymTab({}, None)) -> Type:
                 raise Exception(f"{node.variable} already declared")
             symbols.variables[node.variable] = val
             return val
-
+        
+        case ast.Unary():
+            val = typecheck(node.exp)
+            return val
+        case ast.Boolean_literal():
+            if node.boolean in ["true", "false"]:
+                return Bool
+        case ast.Function():
+            parameter_types = []
+            for par in node.arguments:
+                parameter_types.append(typecheck(par))
+            res = typecheck(node.name)
+            return FunType(parameter_types, res)
+        case ast.Block():
+            pass
+        case ast.While_loop():
+            pass
                     
                 
             
