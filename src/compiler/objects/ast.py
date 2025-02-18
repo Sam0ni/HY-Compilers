@@ -1,5 +1,6 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Literal as Lit
+from objects.types import BasicType, Type, Unit
 
 from objects.source_location import Source_location
 
@@ -8,6 +9,8 @@ from objects.source_location import Source_location
 class Expression:
     """Base class for AST nodes representing expressions."""
     loc: Source_location | None
+
+    type: Type = field(kw_only = True, default=Unit)
 
     def __eq__(self, other):
         if self.loc == other.loc:
@@ -98,7 +101,7 @@ class FunctionTypeExpression(Expression):
 class Declaration(Expression):
     variable: Identifier
     value: Expression
-    typed: FunctionTypeExpression | Expression | None
+    typed: FunctionTypeExpression | BasicType | None
 
     def __eq__(self, other):
         if self.variable == other.variable and self.value == other.value:

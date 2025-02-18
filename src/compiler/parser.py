@@ -1,6 +1,7 @@
 from objects.token import Token
 import objects.ast as ast
 from assets.test_source import L
+from objects.types import Bool, Unit, Int
 
 class Parser:
     @staticmethod
@@ -114,7 +115,6 @@ class Parser:
                 if peek().text == ":":
                     consume(":")
                     typed = parse_type_expression()
-                    print(typed)
                     consume("=")
                     dec_val = parse_expression(allowed, allow_all)
                     return ast.Declaration(location, declaration, dec_val, typed)
@@ -138,7 +138,14 @@ class Parser:
                 return ast.FunctionTypeExpression(loc=location, variable_types=parameters, result_type=result)
             else:
                 type_expression = parse_identifier()
-                return type_expression
+                if type_expression.name == "Int":
+                    return Int
+                elif type_expression.name == "Bool":
+                    return Bool
+                elif type_expression.name == "Unit":
+                    return Unit
+                else:
+                    raise Exception(f"Invalid type: {type_expression.name}. Must be either Int, Bool or Unit.")
             
         def parse_while_loop() -> ast.While_loop:
             location = peek().loc
@@ -278,5 +285,9 @@ class Parser:
     
 if __name__ == "__main__":
     P = Parser()
-    code = [Token(L, "identifier", "var"), Token(L, "identifier", "a"), Token(L, "operator", "="), Token(L, "int_literal", "1"), Token(L, "punctuation", ";"), Token(L, "identifier", "print"), Token(L, "punctuation", "("), Token(L, "identifier", "a"), Token(L, "operator", "+"), Token(L, "int_literal", "2"), Token(L, "operator", "=="), Token(L, "int_literal", "3"), Token(L, "punctuation", ")")]
+    code = [Token(L, "identifier", "a")]
+
     print(P.parse(code))
+    parsed = P.parse(code)[0]
+    parsed.type = Int
+    

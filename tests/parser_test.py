@@ -3,6 +3,7 @@ from compiler.objects.source_location import Source_location
 from compiler.parser import Parser
 from compiler.assets.test_source import L
 import compiler.objects.ast as ast
+from compiler.objects.types import Bool
 
 parse = Parser.parse
 
@@ -179,8 +180,8 @@ def test_while_loop() -> None:
     assert parse(loop) == [ast.While_loop(L, ast.Boolean_literal(L, "true"), ast.BinaryOp(L, ast.Identifier(L, "a"), "+", ast.Literal(L, 1)))]
 
 def test_typed_variable_dec() -> None:
-    declaration = [Token(L, "identifier", "var"), Token(L, "identifier", "a"), Token(L, "punctuation", ":"), Token(L, "identifier", "bool"), Token(L, "operator", "="), Token(L, "identifier", "true")]
-    assert parse(declaration) == [ast.Declaration(L, ast.Identifier(L, "a"), ast.Boolean_literal(L, "true"), ast.Identifier(L, "bool"))]
+    declaration = [Token(L, "identifier", "var"), Token(L, "identifier", "a"), Token(L, "punctuation", ":"), Token(L, "identifier", "Bool"), Token(L, "operator", "="), Token(L, "identifier", "true")]
+    assert parse(declaration) == [ast.Declaration(L, ast.Identifier(L, "a"), ast.Boolean_literal(L, "true"), Bool)]
 
 #def test_typed_variable_dec_func() -> None:
     #declaration = [Token(L, "identifier", "var"), Token(L, "identifier", "a"), Token(L, "punctuation", ":"), Token(L, "punctuation", "("), Token(L, "identifier", "bool"), Token(L, "punctuation", ","), Token(L, "identifier", "int"), Token(L, "punctuation", ","), Token(L, "identifier", "str"), Token(L, "punctuation", ")"), Token(L, "operator", "=>"), Token(L, "identifier", "int"), Token(L, "identifier", "true")]
