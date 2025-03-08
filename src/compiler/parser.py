@@ -1,7 +1,7 @@
 from objects.token import Token
 import objects.ast as ast
 from assets.test_source import L
-from objects.types import Bool, Unit, Int
+from objects.node_types import Bool, Unit, Int
 
 class Parser:
     @staticmethod
@@ -285,9 +285,7 @@ class Parser:
     
 if __name__ == "__main__":
     P = Parser()
-    code = [Token(L, "identifier", "a")]
+    code = [Token(L, "identifier", "a"), Token(L, "punctuation", ";")]
 
     print(P.parse(code))
-    parsed = P.parse(code)[0]
-    parsed.type = Int
     

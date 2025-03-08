@@ -1,7 +1,7 @@
 from compiler.tokenizer import Tokenizer
 from compiler.parser import Parser
 from compiler.typechecker import typechecker
-from compiler.objects.types import Int, Bool, Unit, Type, FunType
+from compiler.objects.node_types import Int, Bool, Unit, Type, FunType
 from compiler.objects.sym_table import SymTab
 
 

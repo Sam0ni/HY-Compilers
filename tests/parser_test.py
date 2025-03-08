@@ -3,7 +3,7 @@ from compiler.objects.source_location import Source_location
 from compiler.parser import Parser
 from compiler.assets.test_source import L
 import compiler.objects.ast as ast
-from compiler.objects.types import Bool
+from compiler.objects.node_types import Bool
 
 parse = Parser.parse
 
