@@ -31,11 +31,11 @@ def generate_ir(
         var_types[new_one] = t
         return new_one
     
-    def new_label() -> ir.Label:
+    def new_label(loc) -> ir.Label:
         nonlocal cur_lab_num
         new_lab_name = "L" + str(cur_lab_num)
         cur_lab_num += 1
-        new_one = ir.Label(new_lab_name)
+        new_one = ir.Label(loc, new_lab_name)
         return new_one
 
     # We collect the IR instructions that we generate
@@ -62,33 +62,33 @@ def generate_ir(
         
         def short_circuit(st: SymTab, expr: ast.Expression):
             if expr.op == "or":
-                l_right = new_label()
-                l_skip = new_label()
-                l_end = new_label()
+                l_right = new_label(loc)
+                l_skip = new_label(loc)
+                l_end = new_label(loc)
                 var_left = visit(st, expr.left)
                 var_right = visit(st, expr.right)
-                var_result = new_var()
+                var_result = new_var(Bool)
                 ins.append(ir.CondJump(loc, var_left, l_skip, l_right))
                 ins.append(l_right)
                 ins.append(ir.Copy(loc, var_right, var_result))
                 ins.append(ir.Jump(loc, l_end))
                 ins.append(l_skip)
-                ins.append(ir.LoadBoolConst(loc, "True", var_result))
+                ins.append(ir.LoadBoolConst(loc, "true", var_result))
                 ins.append(ir.Jump(l_end))
                 ins.append(l_end)
             else:
-                l_right = new_label()
-                l_skip = new_label()
-                l_end = new_label()
+                l_right = new_label(loc)
+                l_skip = new_label(loc)
+                l_end = new_label(loc)
                 var_left = visit(st, expr.left)
                 var_right = visit(st, expr.right)
-                var_result = new_var()
+                var_result = new_var(Bool)
                 ins.append(ir.CondJump(loc, var_left, l_right, l_skip))
                 ins.append(l_right)
                 ins.append(ir.Copy(loc, var_right, var_result))
                 ins.append(ir.Jump(loc, l_end))
                 ins.append(l_skip)
-                ins.append(ir.LoadBoolConst(loc, "False", var_result))
+                ins.append(ir.LoadBoolConst(loc, "false", var_result))
                 ins.append(ir.Jump(l_end))
                 ins.append(l_end)
             return var_result
@@ -148,8 +148,8 @@ def generate_ir(
             case ast.IfExpression():
                 if expr.else_clause is None:
                     # Create (but don't emit) some jump targets.
-                    l_then = new_label()
-                    l_end = new_label()
+                    l_then = new_label(loc)
+                    l_end = new_label(loc)
 
                     # Recursively emit instructions for
                     # evaluating the condition.
@@ -173,10 +173,10 @@ def generate_ir(
                     # return a special variable "unit".
                     return var_unit
                 else:
-                    l_then = new_label()
-                    l_else = new_label()
-                    l_end = new_label()
-                    var_result = new_var()
+                    l_then = new_label(loc)
+                    l_else = new_label(loc)
+                    l_end = new_label(loc)
+                    var_result = new_var(expr.then_clause.type)
 
                     var_cond = visit(st, expr.cond)
                     ins.append(ir.CondJump(loc, var_cond, l_then, l_else))
@@ -198,7 +198,7 @@ def generate_ir(
                     args = []
                     for arg in expr.arguments:
                         args.append(visit(arg))
-                    var_result = new_var()
+                    var_result = new_var(rt_types[st.require(expr.name)].result_type)
                     ins.append(ir.Call(loc, st.require(expr.name), args, var_result))
                     return var_result
                 else:
@@ -211,7 +211,7 @@ def generate_ir(
                     bool_var = visit(st, expr.exp)
                     vars = []
                     for op in expr.operators:
-                        vars.append(new_var())
+                        vars.append(new_var(Bool))
                         ins.append(ir.Call(loc, st.require("unary_not"), [bool_var], vars[-1]))
                         bool_var = vars[-1]
                     return bool_var
@@ -221,7 +221,7 @@ def generate_ir(
                     int_var = visit(st, expr.exp)
                     vars = []
                     for op in expr.operators:
-                        vars.append(new_var())
+                        vars.append(new_var(Int))
                         ins.append(ir.Call(loc, st.require("unary_-"), [int_var], vars[-1]))
                         int_var = vars[-1]
                     return int_var
@@ -232,23 +232,23 @@ def generate_ir(
                     return var_unit
                 for seq in expr.sequence:
                     visit(new_scope, seq)
-                if expr.result == None:
+                if expr.result is None:
                     return var_unit
                 else: 
                     return visit(new_scope, expr.result)
             
             case ast.Declaration():
                 var_val = visit(st, expr.value)
-                var_result = new_var()
+                var_result = new_var(var_types[var_val])
                 ins.append(ir.Copy(loc, var_val, var_result))
                 st.variables[expr.variable.name] = var_result
                 return var_unit
                 
             
             case ast.While_loop():
-                l_start = new_label()
-                l_body = new_label()
-                l_end = new_label()
+                l_start = new_label(loc)
+                l_body = new_label(loc)
+                l_end = new_label(loc)
 
                 var_cond = visit(st, expr.condition)
 

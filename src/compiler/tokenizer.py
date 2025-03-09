@@ -16,7 +16,7 @@ multiline_comment_re = re.compile(r"/[*](\s|.)+?[*]/")
 
 class Tokenizer:
     @staticmethod
-    def tokenize(source_code: str) -> list[str]:
+    def tokenize(source_code: str, file_name: str = "tester") -> list[str]:
         tokens = []
         line = 1
         indx = 0
@@ -29,7 +29,7 @@ class Tokenizer:
             for regex in regexes:
                 match = regex[0].match(source_code, indx)
                 if match:
-                    source = Source_location(source_code, line, column)
+                    source = Source_location(file_name, line, column)
                     new_token = Token(source, regex[1], match.group())
                     tokens.append(new_token)
                     indx = match.end()

@@ -5,6 +5,13 @@ import sys
 from socketserver import ForkingTCPServer, StreamRequestHandler
 from traceback import format_exception
 from typing import Any
+from tokenizer import Tokenizer
+from parser import Parser
+from typechecker import typechecker
+from ir_generator import generate_ir
+from assembly_generator import generate_assembly
+from objects.node_types import Type, BasicType, Bool, Int, Unit, FunType
+import objects.ir_variables as ir
 
 
 def call_compiler(source_code: str, input_file_name: str) -> bytes:
@@ -15,7 +22,13 @@ def call_compiler(source_code: str, input_file_name: str) -> bytes:
     # The input file name is informational only: you can optionally include in your source locations and error messages,
     # or you can ignore it.
     # *** TODO ***
-    raise NotImplementedError("Compiler not implemented")
+    tok = Tokenizer()
+    par = Parser()
+    inp = par.parse(tok.tokenize(source_code, input_file_name))
+    typechecker(inp)
+    rt_types = {ir.IRVar("+"): FunType([Int, Int], Int), ir.IRVar("*"): FunType([Int, Int], Int), ir.IRVar("print_int"): FunType([Int], Unit), ir.IRVar("print_bool"): FunType([Bool], Unit), ir.IRVar("unary_not"): FunType([Bool], Bool), ir.IRVar("unary_-"): FunType([Int], Int), ir.IRVar("<"): FunType([Int, Int], Bool), ir.IRVar(">"): FunType([Int, Int], Bool), ir.IRVar("<="): FunType([Int, Int], Bool), ir.IRVar(">="): FunType([Int, Int], Bool), ir.IRVar("-"): FunType([Int, Int], Int), ir.IRVar("/"): FunType([Int, Int], Int), ir.IRVar("%"): FunType([Int, Int], Int), ir.IRVar("=="): FunType([BasicType, BasicType], Bool), ir.IRVar("!="): FunType([BasicType, BasicType], Bool)}
+    all_ir = generate_ir(rt_types, inp)
+    return generate_assembly(all_ir)
 
 
 def main() -> int:
