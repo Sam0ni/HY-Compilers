@@ -1,15 +1,15 @@
-import objects.ast as ast
-from objects.node_types import Int, Bool, Unit, Type, FunType
-from objects.sym_table import SymTab
+import compiler.objects.ast as ast
+from compiler.objects.node_types import Int, Bool, Unit, Type, FunType
+from compiler.objects.sym_table import SymTab
 
-def typechecker(nodes: list[ast.Expression], top_level: SymTab = SymTab({}, None)) -> list[Type]:
-    lineTypes = []
+def typechecker(node: ast.Expression, top_level: SymTab = SymTab({"print_int": FunType([Int], Unit), "print_bool": FunType([Bool], Unit), "read_int": FunType([Int], Int)}, None)) -> Type:
+    lineType = ""
 
     top_level_vars = top_level
 
-    def binary_op_type(node: ast.Expression, symbols: SymTab = SymTab({}, None)) -> Type:
-        t1 = typecheck(node.left)
-        t2 = typecheck(node.right)
+    def binary_op_type(node: ast.BinaryOp, symbols: SymTab = SymTab({}, None)) -> Type:
+        t1 = typecheck(node.left, symbols)
+        t2 = typecheck(node.right, symbols)
         if node.op in ["+", "-", "*", "/", "%"]:
             if t1 is not Int or t2 is not Int:
                 raise Exception(f"In {node} the operators were not of same type")
@@ -26,8 +26,12 @@ def typechecker(nodes: list[ast.Expression], top_level: SymTab = SymTab({}, None
             if t1 != t2:
                 raise Exception(f"{t1} and {t2} are not of the same type")
             return Bool
+        elif node.op in ["and", "or"]:
+            if t1 is not Bool and t2 is not Bool:
+                raise Exception(f"{t1} and {t2} are not boolean")
+            return Bool
         
-    def if_expression_type(node: ast.Expression, symbols: SymTab = SymTab({}, None)) -> Type:
+    def if_expression_type(node: ast.IfExpression, symbols: SymTab = SymTab({}, None)) -> Type:
         t1 = typecheck(node.cond, symbols)
         if t1 is not Bool:
             raise Exception(f"In {node} the condition is not of type Bool")
@@ -40,7 +44,7 @@ def typechecker(nodes: list[ast.Expression], top_level: SymTab = SymTab({}, None
         else:
             return Unit
         
-    def literal_type(node: ast.Expression, symbols: SymTab = SymTab({}, None)) -> Type:
+    def literal_type(node: ast.Literal, symbols: SymTab = SymTab({}, None)) -> Type:
         if isinstance(node.value, int):
             return Int
         elif node.value == None:
@@ -49,19 +53,19 @@ def typechecker(nodes: list[ast.Expression], top_level: SymTab = SymTab({}, None
             print(node)
             raise Exception(f"Unknown literal type: {node.value}")
 
-    def identifier_type(node: ast.Expression, symbols: SymTab = SymTab({}, None)) -> Type:
+    def identifier_type(node: ast.Identifier, symbols: SymTab = SymTab({}, None)) -> Type:
         if symbols:
             if node.name in symbols.variables.keys():
                 return symbols.variables[node.name]
             current_scope = symbols.parent
             while(current_scope):
                 if node.name in current_scope.variables.keys():
-                    return typecheck(current_scope.variables[node.name])
+                    return current_scope.variables[node.name]
                 current_scope = current_scope.parent
-        raise Exception("Variable referenced before declaration")
+        raise Exception(f"Variable referenced before declaration")
 
-    def declaration_type(node: ast.Expression, symbols: SymTab = SymTab({}, None)) -> Type:
-        val = typecheck(node.value)
+    def declaration_type(node: ast.Declaration, symbols: SymTab = SymTab({}, None)) -> Type:
+        val = typecheck(node.value, symbols)
         if node.variable.name in symbols.variables.keys():
             raise Exception(f"{node.variable.name} already declared")
         if node.typed:
@@ -71,34 +75,35 @@ def typechecker(nodes: list[ast.Expression], top_level: SymTab = SymTab({}, None
         symbols.variables[node.variable.name] = val
         return Unit
     
-    def unary_type(node: ast.Expression, symbols: SymTab = SymTab({}, None)) -> Type:
+    def unary_type(node: ast.Unary, symbols: SymTab = SymTab({}, None)) -> Type:
         val = typecheck(node.exp, symbols)
         return val
     
-    def boolean_literal_type(node: ast.Expression, symbols: SymTab = SymTab({}, None)) -> Type:
+    def boolean_literal_type(node: ast.Boolean_literal, symbols: SymTab = SymTab({}, None)) -> Type:
         if node.boolean in ["true", "false"]:
             return Bool
         
-    def function_type(node: ast.Expression, symbols: SymTab = SymTab({}, None)) -> Type:
+    def function_type(node: ast.Function, symbols: SymTab = SymTab({}, None)) -> Type:
         parameter_types = []
         for par in node.arguments:
             parameter_types.append(typecheck(par, symbols))
         res = typecheck(node.name, symbols)
+        if isinstance(res, FunType):
+            return res
         return FunType(parameter_types, res)
 
-    def block_type(node: ast.Expression, symbols: SymTab = SymTab({}, None)) -> Type:
+    def block_type(node: ast.Block, symbols: SymTab = SymTab({}, None)) -> Type:
         new_level = SymTab({}, symbols)
         if len(node.sequence) == 0 and not node.result:
             return Unit
         for i in node.sequence:
             typecheck(i, new_level)
-        result = typecheck(node.result, new_level)
-        if result:
-            return result
+        if node.result is not None and not (isinstance(node.result, ast.Literal) and node.result == ast.Literal(None, None)):
+            return typecheck(node.result, new_level)
         else:
             return Unit
         
-    def while_loop_type(node: ast.Expression, symbols: SymTab = SymTab({}, None)) -> Type:
+    def while_loop_type(node: ast.While_loop, symbols: SymTab = SymTab({}, None)) -> Type:
         cond = typecheck(node.condition, symbols)
         if cond is not Bool:
             raise Exception(f"In {node} the condition is not of type Bool")
@@ -106,7 +111,6 @@ def typechecker(nodes: list[ast.Expression], top_level: SymTab = SymTab({}, None
 
     def typecheck(node: ast.Expression, symbols: SymTab = SymTab({}, None)) -> Type:
         result = None
-
         match node:
             case ast.BinaryOp():
                 result = binary_op_type(node, symbols)
@@ -118,7 +122,7 @@ def typechecker(nodes: list[ast.Expression], top_level: SymTab = SymTab({}, None
                 result = literal_type(node, symbols)
 
             case ast.Identifier():
-                result = identifier_type(node, symbols)                
+                result = identifier_type(node, symbols)            
             
             case ast.Declaration():
                 result = declaration_type(node, symbols)
@@ -140,12 +144,12 @@ def typechecker(nodes: list[ast.Expression], top_level: SymTab = SymTab({}, None
 
         node.type = result
         return result
+    
+
                 
+    lineType = typecheck(node, top_level_vars)
 
-    for node in nodes:
-        lineTypes.append(typecheck(node, top_level_vars))
-
-    return lineTypes
+    return lineType
                 
             
         

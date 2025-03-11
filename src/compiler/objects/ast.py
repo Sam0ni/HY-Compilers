@@ -1,8 +1,8 @@
 from dataclasses import dataclass, field
 from typing import Literal as Lit
-from objects.node_types import BasicType, Type, Unit
+from compiler.objects.node_types import BasicType, Type, Unit
 
-from objects.source_location import Source_location
+from compiler.objects.source_location import Source_location
 
 
 @dataclass

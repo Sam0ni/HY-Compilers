@@ -1,20 +1,23 @@
-import objects.ir_variables as ir
-import objects.ir_instructions as iri
+import compiler.objects.ir_variables as ir
+import compiler.objects.ir_instructions as iri
 import dataclasses
-from objects.locals import Locals
-from tokenizer import Tokenizer
-from parser import Parser
-from typechecker import typechecker
-from ir_generator import generate_ir
-from objects.node_types import Type, BasicType, Bool, Int, Unit, FunType
+from compiler.objects.locals import Locals
+from compiler.tokenizer import Tokenizer
+from compiler.parser import Parser
+from compiler.typechecker import typechecker
+from compiler.ir_generator import generate_ir
+from compiler.objects.node_types import Type, BasicType, Bool, Int, Unit, FunType
+from compiler.assets.intrinsics import all_intrinsics, IntrinsicArgs
 
 
 def get_all_ir_variables(instructions: list[iri.Instruction]) -> list[ir.IRVar]:
+    operators = ["==", "!=", "<=", ">=", "=>", "<", ">", "+", "-", "*", "/", "=", "%", "unary_not", "unary_-"]
+    built_in = ["print_int", "print_bool", "read_int"]
     result_list: list[ir.IRVar] = []
     result_set: set[ir.IRVar] = set()
 
     def add(v: ir.IRVar) -> None:
-        if v not in result_set:
+        if v not in result_set and v.name not in operators and v.name not in built_in:
             result_list.append(v)
             result_set.add(v)
 
@@ -31,6 +34,7 @@ def get_all_ir_variables(instructions: list[iri.Instruction]) -> list[ir.IRVar]:
 
 def generate_assembly(instructions: list[iri.Instruction]) -> str:
     lines = []
+    operators = ["==", "!=", "<=", ">=", "=>", "<", ">", "+", "-", "*", "/", "=", "%", "unary_not", "unary_-"]
     def emit(line: str) -> None: lines.append(line)
 
     locals = Locals(
@@ -91,19 +95,44 @@ def generate_assembly(instructions: list[iri.Instruction]) -> str:
                 emit(f"jmp .L{insn.else_label.name}")
 
             case iri.Call():
-                ...
+                if insn.fun.name in operators:
+                    args = list(map(locals.get_ref, insn.args))
+                    all_intrinsics[insn.fun.name](IntrinsicArgs(args, f"%rax", emit))
+                    emit(f"movq %rax, {locals.get_ref(insn.dest)}")
+                else:
+                    registers_used = 0
+                    registers = [f"%rdi", f"%rsi", f"%rdx", f"%rcx", f"%r8", f"%r9"]
+                    pushed = 0
+                    correction = False
+                    if locals.stack_used() % 16 != 0:
+                        emit(f"subq $8, %rsp")
+                        correction = True
+                    for arg in insn.args[:6]:
+                        emit(f"movq {locals.get_ref(arg)}, {registers[registers_used]}")
+                        registers_used += 1
+                    for arg in insn.args[-1:registers_used:-1]:
+                        emit(f"pushq {locals.get_ref(arg)}")
+                        pushed += 1
+                    emit(f"callq {insn.fun.name}")
+                    emit(f"movq %rax, {locals.get_ref(insn.dest)}")
+                    if pushed > 0:
+                        emit(f"addq ${8*pushed}, %rsp")
+                    if correction:
+                        emit(f"addq $8, %rsp")
+                
+                
         
     post_stack = [f"movq %rbp, %rsp", f"popq %rbp", f"ret"]
     for dec in post_stack:
         emit(dec)
     
-    return lines
+    return "\n".join(lines)
 
 
 if __name__ == "__main__":
     tok = Tokenizer()
     par = Parser()
-    inp = par.parse(tok.tokenize("{ var x = true; if x then 1 else 2; }"))
+    inp = par.parse(tok.tokenize("print_int(2)"))
     typechecker(inp)
     rt_types = {ir.IRVar("+"): FunType([Int, Int], Int), ir.IRVar("*"): FunType([Int, Int], Int), ir.IRVar("print_int"): FunType([Int], Unit), ir.IRVar("print_bool"): FunType([Bool], Unit), ir.IRVar("unary_not"): FunType([Bool], Bool), ir.IRVar("unary_-"): FunType([Int], Int), ir.IRVar("<"): FunType([Int, Int], Bool), ir.IRVar(">"): FunType([Int, Int], Bool), ir.IRVar("<="): FunType([Int, Int], Bool), ir.IRVar(">="): FunType([Int, Int], Bool), ir.IRVar("-"): FunType([Int, Int], Int), ir.IRVar("/"): FunType([Int, Int], Int), ir.IRVar("%"): FunType([Int, Int], Int), ir.IRVar("=="): FunType([BasicType, BasicType], Bool), ir.IRVar("!="): FunType([BasicType, BasicType], Bool)}
     all_ir = generate_ir(rt_types, inp)

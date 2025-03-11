@@ -1,17 +1,17 @@
-from objects.ir_variables import IRVar
-from objects.node_types import Type, BasicType, Bool, Int, Unit, FunType
-import objects.ir_instructions as ir
-import objects.ast as ast
-from objects.sym_table import SymTab
-from tokenizer import Tokenizer
-from parser import Parser
-from typechecker import typechecker
+from compiler.objects.ir_variables import IRVar
+from compiler.objects.node_types import Type, BasicType, Bool, Int, Unit, FunType
+import compiler.objects.ir_instructions as ir
+import compiler.objects.ast as ast
+from compiler.objects.sym_table import SymTab
+from compiler.tokenizer import Tokenizer
+from compiler.parser import Parser
+from compiler.typechecker import typechecker
 
 def generate_ir(
     # 'root_types' parameter should map all global names
     # like 'print_int' and '+' to their types.
     root_types: dict[IRVar, Type],
-    nodes: list[ast.Expression]
+    node: ast.Expression
 ) -> list[ir.Instruction]:
     cur_var_num = 1
     cur_lab_num = 1
@@ -54,13 +54,13 @@ def generate_ir(
     def visit(st: SymTab, expr: ast.Expression) -> IRVar:
         loc = expr.loc
 
-        def equals_handle(st: SymTab, expr: ast.Expression):
+        def equals_handle(st: SymTab, expr: ast.BinaryOp):
             var_val = visit(st, expr.right)
-            var_org = st.require(expr.left)
-            ins.append(ir.Copy(var_val, var_org))
+            var_org = visit(st, expr.left)
+            ins.append(ir.Copy(loc, var_val, var_org))
             return var_org
         
-        def short_circuit(st: SymTab, expr: ast.Expression):
+        def short_circuit(st: SymTab, expr: ast.BinaryOp):
             if expr.op == "or":
                 l_right = new_label(loc)
                 l_skip = new_label(loc)
@@ -74,7 +74,7 @@ def generate_ir(
                 ins.append(ir.Jump(loc, l_end))
                 ins.append(l_skip)
                 ins.append(ir.LoadBoolConst(loc, "true", var_result))
-                ins.append(ir.Jump(l_end))
+                ins.append(ir.Jump(loc, l_end))
                 ins.append(l_end)
             else:
                 l_right = new_label(loc)
@@ -89,7 +89,7 @@ def generate_ir(
                 ins.append(ir.Jump(loc, l_end))
                 ins.append(l_skip)
                 ins.append(ir.LoadBoolConst(loc, "false", var_result))
-                ins.append(ir.Jump(l_end))
+                ins.append(ir.Jump(loc, l_end))
                 ins.append(l_end)
             return var_result
 
@@ -194,21 +194,21 @@ def generate_ir(
                     return var_result
 
             case ast.Function():
-                if st.require(expr.name):
+                if st.require(expr.name.name):
                     args = []
                     for arg in expr.arguments:
-                        args.append(visit(arg))
-                    var_result = new_var(rt_types[st.require(expr.name)].result_type)
-                    ins.append(ir.Call(loc, st.require(expr.name), args, var_result))
+                        args.append(visit(st, arg))
+                    var_result = new_var(root_types[st.require(expr.name.name)].result_type)
+                    ins.append(ir.Call(loc, st.require(expr.name.name), args, var_result))
                     return var_result
                 else:
                     raise Exception(f"No such function as {expr.name}")
 
             case ast.Unary():
                 if expr.operators[0] == "not":
-                    if not isinstance(expr.exp, ast.Boolean_literal):
-                        raise Exception(f"{expr.exp} not a boolean")
                     bool_var = visit(st, expr.exp)
+                    if var_types[bool_var] != Bool:
+                        raise Exception(f"{expr.exp} not a boolean")
                     vars = []
                     for op in expr.operators:
                         vars.append(new_var(Bool))
@@ -216,9 +216,9 @@ def generate_ir(
                         bool_var = vars[-1]
                     return bool_var
                 else:
-                    if not isinstance(expr.exp, ast.Literal) and isinstance(expr.exp.value, int):
-                        raise Exception(f"{expr.exp} not an integer")
                     int_var = visit(st, expr.exp)
+                    if var_types[int_var] != Int:
+                        raise Exception(f"{expr.exp} not an integer")
                     vars = []
                     for op in expr.operators:
                         vars.append(new_var(Int))
@@ -228,7 +228,7 @@ def generate_ir(
                 
             case ast.Block():
                 new_scope = SymTab({}, st)
-                if len(expr.sequence) == 0 and expr.result == None:
+                if len(expr.sequence) == 0 and expr.result is None:
                     return var_unit
                 for seq in expr.sequence:
                     visit(new_scope, seq)
@@ -273,11 +273,10 @@ def generate_ir(
         root_symtab.add_local(v.name, v)
 
 
-    for root_expr in nodes:
-        # Start visiting the AST from the root.
-        var_final_result = visit(root_symtab, root_expr)
+    # Start visiting the AST from the root.
+    var_final_result = visit(root_symtab, node)
 
-    locat = nodes[-1].loc
+    locat = node.loc
 
     if var_types[var_final_result] == Int:
         dest_var = new_var(Int)
@@ -292,7 +291,7 @@ def generate_ir(
 if __name__ == "__main__":
     tok = Tokenizer()
     par = Parser()
-    inp = par.parse(tok.tokenize("1 == 2"))
+    inp = par.parse(tok.tokenize("-(1+2)*3"))
     typechecker(inp)
     rt_types = {IRVar("+"): FunType([Int, Int], Int), IRVar("*"): FunType([Int, Int], Int), IRVar("print_int"): FunType([Int], Unit), IRVar("print_bool"): FunType([Bool], Unit), IRVar("unary_not"): FunType([Bool], Bool), IRVar("unary_-"): FunType([Int], Int), IRVar("<"): FunType([Int, Int], Bool), IRVar(">"): FunType([Int, Int], Bool), IRVar("<="): FunType([Int, Int], Bool), IRVar(">="): FunType([Int, Int], Bool), IRVar("-"): FunType([Int, Int], Int), IRVar("/"): FunType([Int, Int], Int), IRVar("%"): FunType([Int, Int], Int), IRVar("=="): FunType([BasicType, BasicType], Bool), IRVar("!="): FunType([BasicType, BasicType], Bool)}
     print(generate_ir(rt_types, inp))

@@ -5,13 +5,14 @@ import sys
 from socketserver import ForkingTCPServer, StreamRequestHandler
 from traceback import format_exception
 from typing import Any
-from tokenizer import Tokenizer
-from parser import Parser
-from typechecker import typechecker
-from ir_generator import generate_ir
-from assembly_generator import generate_assembly
-from objects.node_types import Type, BasicType, Bool, Int, Unit, FunType
-import objects.ir_variables as ir
+from compiler.tokenizer import Tokenizer
+from compiler.parser import Parser
+from compiler.typechecker import typechecker
+from compiler.ir_generator import generate_ir
+from compiler.assembly_generator import generate_assembly
+from compiler.objects.node_types import Type, BasicType, Bool, Int, Unit, FunType
+import compiler.objects.ir_variables as ir
+from compiler.assembler import assemble_and_get_executable
 
 
 def call_compiler(source_code: str, input_file_name: str) -> bytes:
@@ -26,9 +27,11 @@ def call_compiler(source_code: str, input_file_name: str) -> bytes:
     par = Parser()
     inp = par.parse(tok.tokenize(source_code, input_file_name))
     typechecker(inp)
-    rt_types = {ir.IRVar("+"): FunType([Int, Int], Int), ir.IRVar("*"): FunType([Int, Int], Int), ir.IRVar("print_int"): FunType([Int], Unit), ir.IRVar("print_bool"): FunType([Bool], Unit), ir.IRVar("unary_not"): FunType([Bool], Bool), ir.IRVar("unary_-"): FunType([Int], Int), ir.IRVar("<"): FunType([Int, Int], Bool), ir.IRVar(">"): FunType([Int, Int], Bool), ir.IRVar("<="): FunType([Int, Int], Bool), ir.IRVar(">="): FunType([Int, Int], Bool), ir.IRVar("-"): FunType([Int, Int], Int), ir.IRVar("/"): FunType([Int, Int], Int), ir.IRVar("%"): FunType([Int, Int], Int), ir.IRVar("=="): FunType([BasicType, BasicType], Bool), ir.IRVar("!="): FunType([BasicType, BasicType], Bool)}
+    rt_types = {ir.IRVar("+"): FunType([Int, Int], Int), ir.IRVar("*"): FunType([Int, Int], Int), ir.IRVar("print_int"): FunType([Int], Unit), ir.IRVar("print_bool"): FunType([Bool], Unit), ir.IRVar("read_int"): FunType([], Int), ir.IRVar("unary_not"): FunType([Bool], Bool), ir.IRVar("unary_-"): FunType([Int], Int), ir.IRVar("<"): FunType([Int, Int], Bool), ir.IRVar(">"): FunType([Int, Int], Bool), ir.IRVar("<="): FunType([Int, Int], Bool), ir.IRVar(">="): FunType([Int, Int], Bool), ir.IRVar("-"): FunType([Int, Int], Int), ir.IRVar("/"): FunType([Int, Int], Int), ir.IRVar("%"): FunType([Int, Int], Int), ir.IRVar("=="): FunType([BasicType, BasicType], Bool), ir.IRVar("!="): FunType([BasicType, BasicType], Bool)}
     all_ir = generate_ir(rt_types, inp)
-    return generate_assembly(all_ir)
+    assembly = generate_assembly(all_ir)
+    return assemble_and_get_executable(assembly)
+
 
 
 def main() -> int:

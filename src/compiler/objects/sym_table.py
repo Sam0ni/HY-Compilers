@@ -2,8 +2,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
-from objects.node_types import BasicType
-from objects.ir_variables import IRVar
+from compiler.objects.node_types import BasicType
+from compiler.objects.ir_variables import IRVar
 
 
 @dataclass

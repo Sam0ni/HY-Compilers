@@ -1,14 +1,14 @@
 import re
-from objects.token import Token
-from objects.source_location import Source_location
+from compiler.objects.token import Token
+from compiler.objects.source_location import Source_location
 
 identifier_keyword_re = re.compile(r"([a-z]|[A-Z]|_)([a-z]|[A-Z]|_|[0-9])*")
-integer_literal_re = re.compile(r"[1-9][0-9]*")
+integer_literal_re = re.compile(r"([1-9][0-9]*|[0-9])")
 whitespace_re = re.compile(r"[ \t\r\f\v]+")
 newline_re = re.compile(r"\n")
 operators_re = re.compile(r"(==|!=|<=|>=|=>|<|>|\+|-|\*|/|=|%|not)")
 punctuation_re = re.compile(r"(\(|\)|{|}|,|;)")
-oneline_comment_re = re.compile(r"(//|#).+\n")
+oneline_comment_re = re.compile(r"(//|#).+($|\n)")
 multiline_comment_re = re.compile(r"/[*](\s|.)+?[*]/")
 
 
@@ -70,9 +70,10 @@ class Tokenizer:
                 continue
             indx += 1
             column += 1
+        tokens.append(Token(Source_location(file_name, line + 1, 0), "end", "ending"))
         return tokens
 
 
 if __name__ == "__main__":
     T = Tokenizer()
-    print(T.tokenize("if 2*4 /* \n well \n commentto \n */ mrboom /* aaaaah \n */ \n mrkeem"))
+    print(T.tokenize("123 # hello"))

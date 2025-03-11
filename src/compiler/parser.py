@@ -1,7 +1,7 @@
-from objects.token import Token
-import objects.ast as ast
-from assets.test_source import L
-from objects.node_types import Bool, Unit, Int
+from compiler.objects.token import Token
+import compiler.objects.ast as ast
+from compiler.assets.test_source import L
+from compiler.objects.node_types import Bool, Unit, Int
 
 class Parser:
     @staticmethod
@@ -88,24 +88,29 @@ class Parser:
             elif peek().text in ["true", "false"]:
                 return parse_boolean_literal()
             elif peek().text == "while":
-                return parse_while_loop()
+                return parse_while_loop(allowed, allow_all)
             elif peek().type == "int_literal":
                 return parse_int_literal()
             elif peek().type == "identifier":
                 return parse_identifier()
             else: 
-                print(peek())
+                #print(tokens[pos:])
                 raise Exception(f"{peek().loc}: expected an integer literal or and identifier")
 
         def parse_all():
             expressions = []
-            expressions.append(parse_expression_top([";"]))
+            ast_tree = None
+            expressions.append(parse_expression_top([";", "ending"]))
             while peek().text == ";":
                 consume(";")
                 if peek().type == "end":
                     break
-                expressions.append(parse_expression_top([";"]))
-            return expressions
+                expressions.append(parse_expression_top([";", "ending"]))
+            if peek_prev().text == ";":
+                ast_tree = ast.Block(peek_prev().loc, expressions, None)
+            else:
+                ast_tree = ast.Block(peek_prev().loc, expressions[:-1], expressions[-1])
+            return ast_tree
 
         def parse_expression_top(allowed: list[str] = [], allow_all: bool = False) -> ast.Expression:
             if peek().text == "var":
@@ -122,19 +127,19 @@ class Parser:
             else:
                 return parse_expression(allowed, allow_all)
 
-        def parse_type_expression() -> ast.Expression:
+        def parse_type_expression(allowed: list[str] = [], allow_all: bool = False) -> ast.Expression:
             if peek().text == "(":
                 location = peek().loc
                 consume("(")
                 parameters = []
-                param = parse_type_expression()
+                param = parse_type_expression([",", ")"] + allowed, allow_all)
                 parameters.append(param)
                 while peek().text == ",":
-                    param = parse_type_expression()
+                    param = parse_type_expression([",", ")"] + allowed, allow_all)
                     parameters.append(param)
                 consume(")")
                 consume("=>")
-                result = parse_type_expression()
+                result = parse_type_expression(allowed, allow_all)
                 return ast.FunctionTypeExpression(loc=location, variable_types=parameters, result_type=result)
             else:
                 type_expression = parse_identifier()
@@ -147,12 +152,12 @@ class Parser:
                 else:
                     raise Exception(f"Invalid type: {type_expression.name}. Must be either Int, Bool or Unit.")
             
-        def parse_while_loop() -> ast.While_loop:
+        def parse_while_loop(allowed: list[str] = [], allow_all: bool = False) -> ast.While_loop:
             location = peek().loc
             consume("while")
-            cond = parse_expression(["do"])
+            cond = parse_expression(["do"] + allowed, allow_all)
             consume("do")
-            itering = parse_expression()
+            itering = parse_expression(allowed, allow_all)
             return ast.While_loop(location, cond, itering)
 
 
@@ -179,7 +184,7 @@ class Parser:
                     operator,
                     right
                 )
-            if peek().type != "end" and peek().text not in allowed and not allow_all:
+            if peek().type != "end" and peek().text not in allowed and not allow_all and peek_prev().text != "}":
                 raise Exception(f"{peek().loc}: unexpected term: {peek().text}")
             return left
         
@@ -242,10 +247,11 @@ class Parser:
         def parse_function(allowed: list[str] = [], allow_all: bool = False) -> list[ast.Expression]:
             arguments = []
             consume("(")
-            arguments.append(parse_expression([",", ")"] + allowed, allow_all))
-            while peek().text == ",":
-                consume(",")
+            if peek().text != ")":
                 arguments.append(parse_expression([",", ")"] + allowed, allow_all))
+                while peek().text == ",":
+                    consume(",")
+                    arguments.append(parse_expression([",", ")"] + allowed, allow_all))
             consume(")")
             return arguments
             

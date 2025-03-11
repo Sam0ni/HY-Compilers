@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 import dataclasses
 from typing import Any
-from objects.ir_variables import IRVar
-from objects.source_location import Source_location as Location
+from compiler.objects.ir_variables import IRVar
+from compiler.objects.source_location import Source_location as Location
 
 
 @dataclass(frozen=True)

@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Literal
-from objects.source_location import Source_location
-from assets.test_source import L
+from compiler.objects.source_location import Source_location
+from compiler.assets.test_source import L
 
 TokenType = Literal["int_literal", "identifier", "operator", "punctuation", "end"]
 

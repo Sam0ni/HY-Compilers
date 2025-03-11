@@ -1,4 +1,4 @@
-import objects.ir_variables as ir
+import compiler.objects.ir_variables as ir
 
 
 class Locals:
