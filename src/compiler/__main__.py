@@ -25,11 +25,13 @@ def call_compiler(source_code: str, input_file_name: str) -> bytes:
     # *** TODO ***
     tok = Tokenizer()
     par = Parser()
+    print(tok.tokenize(source_code, input_file_name))
     inp = par.parse(tok.tokenize(source_code, input_file_name))
     typechecker(inp)
     rt_types = {ir.IRVar("+"): FunType([Int, Int], Int), ir.IRVar("*"): FunType([Int, Int], Int), ir.IRVar("print_int"): FunType([Int], Unit), ir.IRVar("print_bool"): FunType([Bool], Unit), ir.IRVar("read_int"): FunType([], Int), ir.IRVar("unary_not"): FunType([Bool], Bool), ir.IRVar("unary_-"): FunType([Int], Int), ir.IRVar("<"): FunType([Int, Int], Bool), ir.IRVar(">"): FunType([Int, Int], Bool), ir.IRVar("<="): FunType([Int, Int], Bool), ir.IRVar(">="): FunType([Int, Int], Bool), ir.IRVar("-"): FunType([Int, Int], Int), ir.IRVar("/"): FunType([Int, Int], Int), ir.IRVar("%"): FunType([Int, Int], Int), ir.IRVar("=="): FunType([BasicType, BasicType], Bool), ir.IRVar("!="): FunType([BasicType, BasicType], Bool)}
     all_ir = generate_ir(rt_types, inp)
     assembly = generate_assembly(all_ir)
+    print(assembly)
     return assemble_and_get_executable(assembly)
 
 

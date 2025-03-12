@@ -7,7 +7,7 @@ integer_literal_re = re.compile(r"([1-9][0-9]*|[0-9])")
 whitespace_re = re.compile(r"[ \t\r\f\v]+")
 newline_re = re.compile(r"\n")
 operators_re = re.compile(r"(==|!=|<=|>=|=>|<|>|\+|-|\*|/|=|%|not)")
-punctuation_re = re.compile(r"(\(|\)|{|}|,|;)")
+punctuation_re = re.compile(r"(\(|\)|{|}|,|;|:)")
 oneline_comment_re = re.compile(r"(//|#).+($|\n)")
 multiline_comment_re = re.compile(r"/[*](\s|.)+?[*]/")
 

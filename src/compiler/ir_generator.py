@@ -66,10 +66,10 @@ def generate_ir(
                 l_skip = new_label(loc)
                 l_end = new_label(loc)
                 var_left = visit(st, expr.left)
-                var_right = visit(st, expr.right)
                 var_result = new_var(Bool)
                 ins.append(ir.CondJump(loc, var_left, l_skip, l_right))
                 ins.append(l_right)
+                var_right = visit(st, expr.right)
                 ins.append(ir.Copy(loc, var_right, var_result))
                 ins.append(ir.Jump(loc, l_end))
                 ins.append(l_skip)
@@ -81,10 +81,10 @@ def generate_ir(
                 l_skip = new_label(loc)
                 l_end = new_label(loc)
                 var_left = visit(st, expr.left)
-                var_right = visit(st, expr.right)
                 var_result = new_var(Bool)
                 ins.append(ir.CondJump(loc, var_left, l_right, l_skip))
                 ins.append(l_right)
+                var_right = visit(st, expr.right)
                 ins.append(ir.Copy(loc, var_right, var_result))
                 ins.append(ir.Jump(loc, l_end))
                 ins.append(l_skip)
@@ -250,9 +250,8 @@ def generate_ir(
                 l_body = new_label(loc)
                 l_end = new_label(loc)
 
-                var_cond = visit(st, expr.condition)
-
                 ins.append(l_start)
+                var_cond = visit(st, expr.condition)
                 ins.append(ir.CondJump(loc, var_cond, l_body, l_end))
                 ins.append(l_body)
                 visit(st, expr.itering)
@@ -277,6 +276,7 @@ def generate_ir(
     var_final_result = visit(root_symtab, node)
 
     locat = node.loc
+
 
     if var_types[var_final_result] == Int:
         dest_var = new_var(Int)

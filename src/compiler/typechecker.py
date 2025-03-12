@@ -2,7 +2,7 @@ import compiler.objects.ast as ast
 from compiler.objects.node_types import Int, Bool, Unit, Type, FunType
 from compiler.objects.sym_table import SymTab
 
-def typechecker(node: ast.Expression, top_level: SymTab = SymTab({"print_int": FunType([Int], Unit), "print_bool": FunType([Bool], Unit), "read_int": FunType([Int], Int)}, None)) -> Type:
+def typechecker(node: ast.Expression, top_level: SymTab = SymTab({"print_int": FunType([Int], Unit), "print_bool": FunType([Bool], Unit), "read_int": FunType([], Int)}, None)) -> Type:
     lineType = ""
 
     top_level_vars = top_level
@@ -20,15 +20,15 @@ def typechecker(node: ast.Expression, top_level: SymTab = SymTab({"print_int": F
             return Bool
         elif node.op == "=":
             if t1 != t2:
-                raise Exception(f"Variable {t1} is not of the same type as {t2}")
+                raise Exception(f"Variable {node.left} is not of the same type as {node.right}")
             return t2
         elif node.op in ["==", "!="]:
             if t1 != t2:
-                raise Exception(f"{t1} and {t2} are not of the same type")
+                raise Exception(f"{node.left} and {node.right} are not of the same type")
             return Bool
         elif node.op in ["and", "or"]:
-            if t1 is not Bool and t2 is not Bool:
-                raise Exception(f"{t1} and {t2} are not boolean")
+            if t1 is not Bool or t2 is not Bool:
+                raise Exception(f"{node.left} and {node.right} are not both boolean")
             return Bool
         
     def if_expression_type(node: ast.IfExpression, symbols: SymTab = SymTab({}, None)) -> Type:
@@ -89,7 +89,10 @@ def typechecker(node: ast.Expression, top_level: SymTab = SymTab({"print_int": F
             parameter_types.append(typecheck(par, symbols))
         res = typecheck(node.name, symbols)
         if isinstance(res, FunType):
-            return res
+            for i in range(len(res.parameter_types)):
+                if parameter_types[i] != res.parameter_types[i]:
+                    raise Exception(f"Wrong parametertype for function {node.name.name}")
+            return res.result_type
         return FunType(parameter_types, res)
 
     def block_type(node: ast.Block, symbols: SymTab = SymTab({}, None)) -> Type:

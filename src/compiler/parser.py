@@ -101,8 +101,9 @@ class Parser:
             expressions = []
             ast_tree = None
             expressions.append(parse_expression_top([";", "ending"]))
-            while peek().text == ";":
-                consume(";")
+            while peek().text == ";" or peek_prev().text == "}":
+                if peek().text == ";":
+                    consume(";")
                 if peek().type == "end":
                     break
                 expressions.append(parse_expression_top([";", "ending"]))
@@ -267,6 +268,7 @@ class Parser:
                     raise Exception(f"Missing semicolon at {peek().loc}")
                 if peek().text != "}":
                     while peek().text == ";" or isinstance(line, ast.Block) or peek_prev().text == "}":
+                        print(peek().text, peek_prev().text)
                         try:
                             consume(";")
                         except:
@@ -277,6 +279,8 @@ class Parser:
                             if peek().text == "}":
                                 result = line
                                 break
+                        else:
+                            break
                 else:
                     result = line
             try:
